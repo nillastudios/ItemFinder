@@ -10,6 +10,7 @@ namespace NillaStudios
     {
         public PickableObject[] objects;
         public int currentClass;
+        public string objToFind = string.Empty;
         public Transform spawnPoint;
 
         public List<SpawnableObjectsClass> spawnableObjectsClasses = new List<SpawnableObjectsClass>();
@@ -22,6 +23,7 @@ namespace NillaStudios
         public float timeForEachObject = 5f;
         private float timer;
         private bool runTimer;
+        private bool levelPassed;
 
         private float lastCoinCollectTimeStamp;
         public float timeForMultiplierToGoTo1 = 3f;
@@ -52,7 +54,7 @@ namespace NillaStudios
             SortPickable();
 
             // Generate level using level number as a seed
-            // levelNumber = PlayerPrefs.GetInt("LevelNumber");
+            levelNumber = PlayerPrefs.GetInt("LevelNumber");
             GenerateLevel(levelNumber);
 
             // Start the game, we are done
@@ -106,6 +108,25 @@ namespace NillaStudios
             // Get a class to find 
             currentClass = RandomNumberDeterministic(seed, 0, unlockedSpawnableClasses.Count);
 
+            // Get number of objects to spawn
+            int noOfObjectsToFind = seed > 20 ? RandomNumberDeterministic(seed, 8, 26) : RandomNumberDeterministic(seed, 3, 13);
+            int noOfnonClassObjects = seed > 20 ? RandomNumberDeterministic(seed, 10, 26) : RandomNumberDeterministic(seed, 20, 51);
+
+            // This is a bonus level, do crazy shit
+            if(isBonusLevel())
+            {
+                Debug.Log("hello mf");
+                PickableObject obj = unlockedSpawnableClasses[currentClass].spawnableObjects[RandomNumberDeterministic(seed, 0, unlockedSpawnableClasses[currentClass].spawnableObjects.Count)];
+                objToFind = obj.objectName;
+
+                // Adjust objects to find
+                noOfObjectsToFind = 0;
+                noOfnonClassObjects = RandomNumberDeterministic(seed, 30, 51);
+
+                // Add this to spawn list
+                spawnList.Add(obj);
+            }
+
             // Make all objects other than current class as non class obj
             for(int i = 0; i < spawnableObjectsClasses.Count; i++)
             {
@@ -117,10 +138,6 @@ namespace NillaStudios
                     }
                 }
             }
-
-            // Get number of objects to spawn
-            int noOfObjectsToFind = seed > 20 ? RandomNumberDeterministic(seed, 8, 26) : RandomNumberDeterministic(seed, 3, 13);
-            int noOfnonClassObjects = seed > 20 ? RandomNumberDeterministic(seed, 10, 26) : RandomNumberDeterministic(seed, 20, 51);
 
             // Spawn random objects from selected class
             for(int i = 0; i < noOfObjectsToFind; i++)
@@ -147,7 +164,7 @@ namespace NillaStudios
             spawnList.Shuffle();
 
             // Setup object receiever
-            objectReceiver.Initialize(spawnableObjectsClasses[currentClass].objectClass, timeForMultiplierToGoTo1, this);
+            objectReceiver.Initialize(spawnableObjectsClasses[currentClass].objectClass, timeForMultiplierToGoTo1, this, objToFind);
 
             // Spawn them in order
             StartCoroutine(StartGame(0.05f));
@@ -185,6 +202,13 @@ namespace NillaStudios
 
             // Start timer
             timer = requiredObjects.Count * timeForEachObject;
+
+            // if bonus level use different scheme, flat 10s time
+            if(isBonusLevel())
+            {
+                timer = 10f;
+            }
+
             runTimer = true;
         }
 
@@ -241,6 +265,12 @@ namespace NillaStudios
 
         public void GameOver()
         {
+            // how game over if level is passed
+            if(levelPassed)
+            {
+                return;
+            }
+
             // Lose a life
             // LifeSystemController.instance.LoseLife();
 
@@ -258,6 +288,10 @@ namespace NillaStudios
 
             // Save coins earned
             PlayerPrefs.SetInt("Coins", PlayerPrefs.GetInt("Coins") + coinsEarnedThisLevel);
+
+            // set level passed so it won't get to game over
+            levelPassed = true;
+            runTimer = false;
         }
 
         public string GetNewClassLetterString()
@@ -291,7 +325,7 @@ namespace NillaStudios
                         }
 
                         // If it is the final letter, unlock the new class
-                        if(i == className.Length)
+                        if(i == className.Length - 1)
                         {
                             PlayerPrefs.SetInt(className + "Status", 1);                            
                         }
@@ -308,6 +342,37 @@ namespace NillaStudios
             }
 
             return returnString;
+        }
+
+        public bool isBonusLevel()
+        {
+            var objClasses = Enum.GetValues(typeof(ObjectClass));
+            foreach(var objClass in objClasses)
+            {
+                // if already unlocked then just skip
+                if(PlayerPrefs.GetInt(objClass.ToString() + "Status") == 1)
+                {
+                    continue;
+                }
+
+                // Check for all letters for unlockable class
+                string className = objClass.ToString();
+                for(int i = 0; i < className.Length; i++)
+                {
+                    // Check if that letter was unlocked
+                    if(PlayerPrefs.GetInt(className + "Status" + className[i] + i.ToString(), 0) == 0)
+                    {
+                        if(i == className.Length - 1)
+                        {
+                            return true;
+                        }
+
+                        return false;
+                    }
+                }
+            }
+
+            return false;
         }
 
         public void NextLevel()

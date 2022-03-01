@@ -15,12 +15,19 @@ namespace NillaStudios
 
         private float multiplierDisappearTime;
         private bool startDisappear;
+        private string bonusObjectName;
 
-        public void Initialize(ObjectClass objectClass, float multiplierDisappearTime, GameController gameController)
+        public void Initialize(ObjectClass objectClass, float multiplierDisappearTime, GameController gameController, string bonusObjectName = "")
         {
             this.targetObjectClass = objectClass;
             classLabel.text = targetObjectClass.ToString();
             this.multiplierDisappearTime = multiplierDisappearTime;
+            this.bonusObjectName = bonusObjectName;
+
+            if(!string.IsNullOrEmpty(bonusObjectName))
+            {
+                classLabel.text = bonusObjectName;         
+            }
 
             this.gameController = gameController;
         }
