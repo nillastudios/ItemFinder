@@ -31,6 +31,14 @@ namespace NillaStudios
 
         private void Start()
         {
+            // If this is first game ever
+            if(PlayerPrefs.GetInt("FirstGameEver") == 0)
+            {
+                // Set the string just to avoid bullshit error
+                PlayerPrefs.SetString("LastGameCloseTime", DateTime.Now.ToString());
+                PlayerPrefs.SetInt("FirstGameEver", 1);
+            }
+
             // get last time when the game was closed
             lastGameCloseTime = Convert.ToDateTime(PlayerPrefs.GetString("LastGameCloseTime"));
             timePassed = DateTime.Now.Subtract(lastGameCloseTime).TotalSeconds;

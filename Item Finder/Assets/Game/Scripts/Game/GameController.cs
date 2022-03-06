@@ -16,6 +16,7 @@ namespace NillaStudios
         public List<SpawnableObjectsClass> spawnableObjectsClasses = new List<SpawnableObjectsClass>();
         public List<SpawnableObjectsClass> unlockedSpawnableClasses = new List<SpawnableObjectsClass>();
         public List<PickableObject> requiredObjects = new List<PickableObject>();
+        public List<PickableObject> nonRequiredObjects = new List<PickableObject>();
         public List<PickableObject> nonClassObjects = new List<PickableObject>();
         private List<PickableObject> spawnList = new List<PickableObject>();
         public int levelNumber;
@@ -28,6 +29,12 @@ namespace NillaStudios
         private float lastCoinCollectTimeStamp;
         public float timeForMultiplierToGoTo1 = 3f;
         private int coinsEarnedThisLevel;
+
+        [Header("Audio Effects")]
+        public AudioClip getReadyClip;
+        public AudioClip correctItemClip;
+        public AudioClip wrongItemClip;
+        public AudioSource gameSoundSource;
 
         private GameUIManager gameUIManager;
         private DragObject dragObject;
@@ -42,6 +49,15 @@ namespace NillaStudios
 
         private void Start()
         {
+            // Start game only if there is life
+            if(LifeSystemController.instance.livesLeft <= 0)
+            {
+                // Show low life panel
+
+                // exit
+                return;
+            }
+
             // Reset time scale in case it was different
             Time.timeScale = 1f;
 
@@ -157,7 +173,8 @@ namespace NillaStudios
                 PickableObject itemPref = nonClassObjects[RandomNumberDeterministic(seed + noOfObjectsToFind + i, 0, nonClassObjects.Count)];
 
                 // Add it to spawn list
-                spawnList.Add(itemPref);           
+                spawnList.Add(itemPref);  
+                nonRequiredObjects.Add(itemPref);         
             }
 
             // Randomize list so it doesn't spawn in order
@@ -244,6 +261,9 @@ namespace NillaStudios
                 requiredObjects.Remove(receivedObj);
                 Destroy(receivedObj.gameObject);
 
+                // Play sound Effects
+                gameSoundSource.PlayOneShot(correctItemClip);
+
                 objectReceiver.FillCoinMeter();
 
                 // Add coins 
@@ -252,6 +272,9 @@ namespace NillaStudios
             }
             else
             {
+                // Play sound Effects
+                gameSoundSource.PlayOneShot(wrongItemClip);
+
                 dragObject.ClearSelectedRigidbody();
                 receivedObj.GetComponent<Rigidbody>().velocity = new Vector3(0f, 1f, 1f) * 15f;
             }
@@ -272,7 +295,7 @@ namespace NillaStudios
             }
 
             // Lose a life
-            // LifeSystemController.instance.LoseLife();
+            LifeSystemController.instance.LoseLife();
 
             // Change UI
             gameUIManager.GameOver();
@@ -375,6 +398,49 @@ namespace NillaStudios
             return false;
         }
 
+        #region PowerUps
+
+        public void PowerUp_FreezeTimer()
+        {
+            StartCoroutine(FreeTimerRoutine());
+        }
+
+        private IEnumerator FreeTimerRoutine()
+        {
+            runTimer = false;
+            yield return new WaitForSeconds(5f);
+            runTimer = true;
+        }
+
+        public void PowerUp_FindOneItem()
+        {
+            // Get a random object
+            PickableObject obj = requiredObjects[UnityEngine.Random.Range(0, requiredObjects.Count)];
+
+            // Then just receive that object
+            ObjectReceived(obj, 5);
+        }
+
+        public void PowerUp_Cleaner()
+        {
+            // Get no of objects to be removed
+            int removableNo = (requiredObjects.Count + nonRequiredObjects.Count) / 2;
+
+            for(int i = 0; i < removableNo; i++)
+            {
+                int index = UnityEngine.Random.Range(0, nonRequiredObjects.Count);
+                PickableObject itemToDelete = nonRequiredObjects[index];
+
+                // Remove item from list
+                nonRequiredObjects.Remove(itemToDelete);
+
+                // Delete that game object
+                Destroy(itemToDelete.gameObject);
+            }
+        }
+
+        #endregion
+
         public void NextLevel()
         {
             // Increment level number
@@ -411,9 +477,7 @@ namespace NillaStudios
         {
             System.Random random = new System.Random(seed);
             return random.Next(min, max);
-        }
-
-        
+        }        
     }
 
     [System.Serializable]

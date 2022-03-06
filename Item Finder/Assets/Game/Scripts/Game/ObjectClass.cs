@@ -1,10 +1,8 @@
 public enum ObjectClass
 {
-    White,
     Blue,
     Green,
     Red,
+    White,
     Yellow
-    
-    // Further add here
 }
